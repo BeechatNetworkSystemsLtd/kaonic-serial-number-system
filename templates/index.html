@@ -125,45 +125,88 @@
       return `${monthNames[month - 1]} ${year}`;
     }
 
-    document.getElementById('searchButton').addEventListener('click', function() {
-      const serial = document.getElementById('serialInput').value.trim().toUpperCase();
-      const resultDiv = document.getElementById('result');
 
-      if (!serial) {
+    document.getElementById('searchButton').addEventListener('click', function() {
+    const serial = document.getElementById('serialInput').value.trim().toUpperCase();
+    const resultDiv = document.getElementById('result');
+
+    if (!serial) {
         resultDiv.innerHTML = '<p>Please enter a serial number.</p>';
         return;
-      }
+    }
 
-      // Clear previous results
-      resultDiv.innerHTML = '<p>Searching...</p>';
+    // Clear previous results
+    resultDiv.innerHTML = '<p>Searching...</p>';
 
-      fetch(`/verify?sn=${encodeURIComponent(serial)}`)
-        .then(response =>
-          response.json().then(data => ({
-            status: response.status,
-            data: data
-          }))
-        )
-        .then(res => {
-            if (res.status === 200 && res.data.status === 'Authentic') {
-                const productionDate = res.data.production_date || "N/A"; // Fix: Use the correct field
+    fetch(`/verify?sn=${encodeURIComponent(serial)}`)
+        .then(response => {
+            // Log the status and headers of the response for debugging
+            console.log("Response Status:", response.status);
+            console.log("Response Headers:", response.headers);
 
-                resultDiv.innerHTML = `
-                <p><span class="label">Status:</span> ${res.data.status}</p>
-                <p><span class="label">Serial:</span> ${res.data.serial_number}</p>
-                <p><span class="label">Production Date:</span> ${productionDate}</p>
-                `;
-            } else if (res.status === 404) {
-                resultDiv.innerHTML = `<p>Serial number not found in database.</p>`;
-            } else {
-                resultDiv.innerHTML = `<p>Error: ${res.data.error || 'Unknown error'}</p>`;
+            // If the status is 429 (Rate Limit), handle it with HTML response
+            if (response.status === 429) {
+                return response.text().then(text => {
+                    resultDiv.innerHTML = `<p>Search limit exceeded. Please try again after 1 minute.</p>`;
+                    console.log("Rate Limit Response Body:", text); // Debugging rate limit response
+                    throw new Error("Rate limit exceeded");
+                });
             }
-            })
 
+            // Handle non-200 status code (e.g., 404, 500, etc.) by reading raw text response
+            if (!response.ok) {
+                return response.text().then(text => {
+                    resultDiv.innerHTML = `<p>Error: Received unexpected response: ${text}</p>`;
+                    console.log("Error Response Body:", text); // Debugging error response
+                    throw new Error("Unexpected response");
+                });
+            }
+
+            // If the response is valid (status 200), try to parse it as JSON
+            return response.text().then(text => {
+                console.log("Response Body (Raw):", text); // Debugging raw body
+                try {
+                    const jsonResponse = JSON.parse(text);
+                    return jsonResponse;
+                } catch (e) {
+                    // If parsing fails, we output the raw response text
+                    resultDiv.innerHTML = `<p>Error: Failed to parse JSON response.</p>`;
+                    console.log("JSON Parsing Error:", e, text); // Debugging JSON parsing error
+                    throw new Error("Failed to parse JSON");
+                }
+            });
+        })
+        .then(res => {
+            console.log("Parsed JSON Response:", res); // Debugging parsed JSON response
+
+            if (res && res.status === 200 && res.data) {
+                // Handle valid JSON response (successful search)
+                if (res.data.status === 'Authentic') {
+                    const productionDate = res.data.production_date || "N/A"; 
+                    resultDiv.innerHTML = `
+                        <p><span class="label">Status:</span> ${res.data.status}</p>
+                        <p><span class="label">Serial:</span> ${res.data.serial_number}</p>
+                        <p><span class="label">Production Date:</span> ${productionDate}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p>Error: ${res.data.error || 'Unknown error'}</p>`;
+                }
+            } else {
+                resultDiv.innerHTML = `<p>Error: Response data is missing or malformed.</p>`;
+            }
+        })
         .catch(error => {
-          resultDiv.innerHTML = `<p>Error: ${error}</p>`;
+            // Handle any fetch or parsing errors
+            if (error.message !== "Rate limit exceeded") {
+                resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
         });
-    });
-  </script>
+});
+
+
+
+</script>
+
+
 </body>
 </html>

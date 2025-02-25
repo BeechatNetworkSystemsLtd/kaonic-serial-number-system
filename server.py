@@ -22,7 +22,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 app = Flask(__name__)
 
 # Rate Limiting: 5 requests per minute per IP
-limiter = Limiter(get_remote_address, app=app, default_limits=["5 per minute"])
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from redis import Redis
+import redis
+
+redis_client = Redis(host='localhost', port=6379, db=0)
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri="redis://localhost:6379",
+    app=app,
+    default_limits=["5 per minute"]
+)
+
+r = redis.Redis(host='localhost', port=6379)
+print(r.ping())  # Should return True if Redis is responding
+
 
 # Regex pattern for serial validation
 SERIAL_PATTERN = re.compile(r"^[A-Z0-9-]{5,20}$")

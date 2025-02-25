@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kaonic Serial Number Lookup</title>
+  <style>
+    /* Snazzy styling */
+    body {
+      background: linear-gradient(135deg, #2F80ED, #56CCF2);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .search-container {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      text-align: center;
+      width: 350px;
+    }
+    h1 {
+      margin-bottom: 20px;
+      font-size: 1.6rem;
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 5px;
+      background: #fff;
+      color: #333;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #ddd;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      min-height: 60px;
+      text-align: left;
+    }
+    .label {
+      font-weight: bold;
+    }
+    .logo {
+    width: 10em;    /* Ideal width, adjust as you see fit */
+    height: auto;   /* Keeps aspect ratio */
+    margin-bottom: 10px;
+  }
+  </style>
+</head>
+<body>
+  <div class="search-container">
+    <img src="/static/logo-white.png" alt="Kaonic Logo" class="logo" />
+
+    <h1>Serial Number Lookup</h1>
+    <input type="text" id="serialInput" placeholder="K1S-XXXX-XXX" />
+    <br />
+    <button id="searchButton">Search</button>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    /**
+     * Convert a production_date_decimal (e.g., "725") into "July 2025" (Month YYYY).
+     * - If it has 3 digits, we treat it as MYY (e.g. 725 => month=7, year=25 => July 2025)
+     * - If it has 4 digits, we treat it as MMYY (e.g. 0725 => month=07, year=25 => July 2025)
+     * Adjust as necessary for your use case.
+     */
+    function convertDecimalToMonthYear(decimalValue) {
+      if (!decimalValue) return null;
+
+      const valStr = decimalValue.toString();
+
+      let month, year;
+      if (valStr.length === 3) {
+        // e.g. 725 => '7' + '25'
+        month = parseInt(valStr[0], 10);
+        year = parseInt(valStr.substring(1), 10);
+      } else if (valStr.length === 4) {
+        // e.g. 0725 => '07' + '25'
+        month = parseInt(valStr.substring(0, 2), 10);
+        year = parseInt(valStr.substring(2), 10);
+      } else {
+        // If it's not 3 or 4 digits, we might not parse it.
+        return null;
+      }
+
+      // Convert year to 20xx
+      year = 2000 + year;
+
+      // Validate the month range
+      if (month < 1 || month > 12) {
+        return null;
+      }
+
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      return `${monthNames[month - 1]} ${year}`;
+    }
+
+    document.getElementById('searchButton').addEventListener('click', function() {
+      const serial = document.getElementById('serialInput').value.trim().toUpperCase();
+      const resultDiv = document.getElementById('result');
+
+      if (!serial) {
+        resultDiv.innerHTML = '<p>Please enter a serial number.</p>';
+        return;
+      }
+
+      // Clear previous results
+      resultDiv.innerHTML = '<p>Searching...</p>';
+
+      fetch(`/verify?sn=${encodeURIComponent(serial)}`)
+        .then(response =>
+          response.json().then(data => ({
+            status: response.status,
+            data: data
+          }))
+        )
+        .then(res => {
+            if (res.status === 200 && res.data.status === 'Authentic') {
+                const productionDate = res.data.production_date || "N/A"; // Fix: Use the correct field
+
+                resultDiv.innerHTML = `
+                <p><span class="label">Status:</span> ${res.data.status}</p>
+                <p><span class="label">Serial:</span> ${res.data.serial_number}</p>
+                <p><span class="label">Production Date:</span> ${productionDate}</p>
+                `;
+            } else if (res.status === 404) {
+                resultDiv.innerHTML = `<p>Serial number not found in database.</p>`;
+              } else if (res.status === 429) {
+                resultDiv.innerHTML = `<p>"Search limit exceeded. Please try again after 1 minute.</p>`;
+
+            } else {
+                resultDiv.innerHTML = `<p>Error: ${res.data.error || 'Unknown error'}</p>`;
+            }
+            })
+
+        .catch(error => {
+          resultDiv.innerHTML = `<p>Error: ${error}</p>`;
+        });
+    });
+  </script>
+</body>
+</html>
