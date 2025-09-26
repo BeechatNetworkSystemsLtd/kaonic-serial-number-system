@@ -34,6 +34,19 @@ def initialize_db():
     if conn:
         try:
             with conn.cursor() as cursor:
+                # Create serials table if it doesn't exist
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS serials (
+                        serial_number VARCHAR(20) PRIMARY KEY,
+                        production_date DATE NOT NULL,
+                        provenance VARCHAR(50) NOT NULL,
+                        batch_id VARCHAR(255),
+                        chunk_index INTEGER,
+                        test_run_id VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                
                 # Check if serials table exists and add new columns if needed
                 cursor.execute("""
                     SELECT column_name FROM information_schema.columns 
@@ -50,19 +63,6 @@ def initialize_db():
                     logging.info("Added new columns to existing serials table")
                 else:
                     logging.info("Serials table already has new columns")
-                
-                # Create serials table if it doesn't exist
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS serials (
-                        serial_number VARCHAR(20) PRIMARY KEY,
-                        production_date DATE NOT NULL,
-                        provenance VARCHAR(50) NOT NULL,
-                        batch_id VARCHAR(255),
-                        chunk_index INTEGER,
-                        test_run_id VARCHAR(255),
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                """)
                 
                 # Public key requests table
                 cursor.execute("""
