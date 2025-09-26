@@ -77,7 +77,7 @@
     <img src="/static/logo-white.png" alt="Kaonic Logo" class="logo" />
 
     <h1>Serial Number Lookup</h1>
-    <input type="text" id="serialInput" placeholder="K1S-XXXX-XXX" />
+    <input type="text" id="serialInput" placeholder="K1S-XXXX" />
     <br />
     <button id="searchButton">Search</button>
     <div class="result" id="result"></div>
@@ -146,12 +146,14 @@
         )
         .then(res => {
             if (res.status === 200 && res.data.status === 'Authentic') {
-                const productionDate = res.data.production_date || "N/A"; // Fix: Use the correct field
+                const productionDate = res.data.production_date || "N/A";
+                const provenance = res.data.provenance || "N/A";
 
                 resultDiv.innerHTML = `
                 <p><span class="label">Status:</span> ${res.data.status}</p>
                 <p><span class="label">Serial:</span> ${res.data.serial_number}</p>
                 <p><span class="label">Production Date:</span> ${productionDate}</p>
+                <p><span class="label">Factory:</span> ${provenance}</p>
                 `;
             } else if (res.status === 404) {
                 resultDiv.innerHTML = `<p>Serial number not found in database.</p>`;

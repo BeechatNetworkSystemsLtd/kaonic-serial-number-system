@@ -25,7 +25,7 @@ def compute_csv_hash(filename: str) -> str:
 timestamp = str(int(time.time()))
 
 # Compute hash of the CSV file
-csv_filename = "kaonic_serials.csv"
+csv_filename = "serials.csv"
 if not os.path.exists(csv_filename):
     raise FileNotFoundError(f"CSV file not found: {csv_filename}")
 
@@ -45,8 +45,8 @@ with open(csv_filename, "rb") as csv_file:
     }
 
     try:
-        response = requests.post("http://161.35.45.220:5000/add_serials", files=files, headers=headers)
-#        response = requests.post("http://localhost:5000/add_serials", files=files, headers=headers)
+#        response = requests.post("http://161.35.45.220:5000/add_serials", files=files, headers=headers)
+        response = requests.post("http://localhost:5000/add_serials", files=files, headers=headers)
         response.raise_for_status()
         print(response.json())
     except requests.exceptions.RequestException as e:
